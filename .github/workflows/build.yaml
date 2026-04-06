@@ -55,14 +55,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Nightly Rust with panic-immediate-abort
-        if: matrix.platform == 'android'
+      - name: Setup Nightly Rust
         shell: bash
+        env:
+          MATRIX_PLATFORM: ${{ matrix.platform }}
         run: |
           rustup toolchain install nightly-2026-04-06 --component rust-src
           rustup default nightly-2026-04-06
-          rustup target add aarch64-linux-android
 
+          if [ "${MATRIX_PLATFORM}" = "android" ]; then
+            rustup target add aarch64-linux-android
+          fi
+
+      - name: Setup panic-immediate-abort
+        shell: bash
+        run: |
           sed -i '1i cargo-features = ["panic-immediate-abort"]' src-tauri/Cargo.toml
 
           mkdir -p .cargo
@@ -85,12 +92,6 @@ jobs:
         with:
           workspaces: './src-tauri'
           key: ${{ matrix.platform }}-nightly-2026-04-06
-
-      - name: Setup Rust
-        if: matrix.platform == 'windows'
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
 
       - name: Setup JDK 17 + Android SDK + NDK
         if: matrix.platform == 'android'
