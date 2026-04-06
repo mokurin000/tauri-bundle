@@ -175,41 +175,42 @@ jobs:
         shell: bash
         run: |
           GRADLE_FILE="src-tauri/gen/android/app/build.gradle.kts"
-          cat > /tmp/signing_config.patch << 'EOF'
-          import java.util.Properties
-
-          val keystorePropertiesFile = rootProject.file("keystore.properties")
-          val keystoreProperties = Properties()
-          if (keystorePropertiesFile.exists()) {
-              keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-          }
-
-          android {
-              signingConfigs {
-                  create("release") {
-                      storeFile = file(keystoreProperties.getProperty("storeFile"))
-                      storePassword = keystoreProperties.getProperty("storePassword")
-                      keyAlias = keystoreProperties.getProperty("keyAlias")
-                      keyPassword = keystoreProperties.getProperty("keyPassword")
-                  }
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig = signingConfigs.getByName("release")
-                  }
-              }
-          }
-          EOF
-
+      
+          # 插入 signingConfigs 到 buildTypes 之前
           awk '
-            /android\s*\{/ { 
-              print; 
-              system("cat /tmp/signing_config.patch"); 
-              next 
-            } 
+            /buildTypes\s*\{/ && !done1 {
+              print "    signingConfigs {";
+              print "        create(\"release\") {";
+              print "            val keystorePropertiesFile = rootProject.file(\"keystore.properties\")";
+              print "            val keystoreProperties = java.util.Properties()";
+              print "            if (keystorePropertiesFile.exists()) {";
+              print "                keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))";
+              print "            }";
+              print "            keyAlias = keystoreProperties[\"keyAlias\"] as String";
+              print "            keyPassword = keystoreProperties[\"keyPassword\"] as String";
+              print "            storeFile = file(keystoreProperties[\"storeFile\"] as String)";
+              print "            storePassword = keystoreProperties[\"storePassword\"] as String";
+              print "        }";
+              print "    }";
+              done1=1;
+            }
             { print }
-          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp" && mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
+          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp"
+      
+          mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
+      
+          # 在 getByName("release") 内插入 signingConfig
+          awk '
+            /getByName\("release"\)\s*\{/ && !done2 {
+              print;
+              print "            signingConfig = signingConfigs.getByName(\"release\")";
+              done2=1;
+              next;
+            }
+            { print }
+          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp"
+      
+          mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
 
       - name: Build Windows x86_64
         if: matrix.platform == 'windows'
