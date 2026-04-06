@@ -179,7 +179,7 @@ jobs:
 
       - name: Build Android ARM64
         if: matrix.platform == 'android'
-        run: npm run tauri android build -- --target aarch64 --release
+        run: npm run tauri android build -- --target aarch64 --apk --ci
 
       # Upload artifacts
       - name: Upload Windows artifacts
