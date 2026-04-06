@@ -1,4 +1,4 @@
-name: Tauri Build
+name: Tauri Build - Windows x86_64 + Android ARM64 (Remote URL)
 
 on:
   workflow_dispatch:
@@ -52,6 +52,7 @@ jobs:
           node-version: 20
 
       - name: Create fresh Tauri v2 project
+        shell: bash
         run: |
           npm create tauri-app@latest . -- --template vanilla --yes \
             --app-name "${{ inputs.app_name }}" \
@@ -94,7 +95,7 @@ jobs:
         if: matrix.platform == 'android'
         run: npm run tauri android init
 
-      # Configure remote URL + package name + version
+      # Configure Tauri (remote URL, package name, version, etc.)
       - name: Configure Tauri for remote URL
         env:
           TARGET_URL: ${{ inputs.url }}
@@ -115,7 +116,6 @@ jobs:
             const androidBuild = parseInt(process.env.ANDROID_BUILD || "1", 10);
             const appName = process.env.APP_NAME || "MyWebApp";
 
-            // Auto extract domain for package name
             let domain = "";
             try {
               domain = new URL(targetUrl).hostname;
@@ -131,18 +131,14 @@ jobs:
             if (!config.build) config.build = {};
             config.build.frontendDist = targetUrl;
 
-            // App identifier (Android package name)
+            // Package identifier
             let identifier = manualPackage;
             if (!identifier && domain) {
               identifier = domain.split(".").reverse().join(".");
             }
-            if (identifier) {
-              config.identifier = identifier;
-            }
+            if (identifier) config.identifier = identifier;
 
             config.version = version;
-
-            // Product name
             if (!config.productName) config.productName = appName;
 
             if (!config.bundle) config.bundle = {};
@@ -159,7 +155,7 @@ jobs:
             console.log("   versionCode  =", androidBuild);
           '
 
-      # Android signing (only on Android job)
+      # Android signing
       - name: Prepare Android Keystore
         if: matrix.platform == 'android'
         env:
@@ -179,17 +175,17 @@ jobs:
           EOF
           echo "✅ Android keystore prepared"
 
-      # Build
+      # Build steps
       - name: Build Windows x86_64 (includes NSIS installer)
         if: matrix.platform == 'windows'
         run: npm run tauri build -- --target x86_64-pc-windows-msvc
 
-      - name: Build Android ARM64 (release)
+      - name: Build Android ARM64
         if: matrix.platform == 'android'
         run: npm run tauri android build -- --target aarch64 --release
 
       # Upload artifacts
-      - name: Upload Windows artifacts (NSIS installer + portable)
+      - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
         with:
