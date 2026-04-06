@@ -160,10 +160,10 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          mkdir -p src-tauri/gen/android
-          echo "$ANDROID_KEY_BASE64" | base64 -d > src-tauri/gen/android/upload-keystore.jks
+          mkdir -p src-tauri/gen/android/app
+          echo "$ANDROID_KEY_BASE64" | base64 -d > src-tauri/gen/android/app/upload-keystore.jks
 
-          cat > src-tauri/gen/android/keystore.properties << EOF
+          cat > src-tauri/gen/android/app/keystore.properties << EOF
           storeFile=upload-keystore.jks
           storePassword=${ANDROID_KEYSTORE_PASSWORD}
           keyAlias=${ANDROID_KEY_ALIAS}
