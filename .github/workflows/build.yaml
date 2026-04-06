@@ -162,7 +162,7 @@ jobs:
         run: |
           mkdir -p src-tauri/gen/android/app
           jks_file=src-tauri/gen/android/app/upload-keystore.jks
-          keystore_prop=src-tauri/gen/android/app/keystore.properties
+          keystore_prop=src-tauri/gen/android/keystore.properties
 
           echo "$ANDROID_KEY_BASE64" | base64 -d > "${jks_file}"
 
