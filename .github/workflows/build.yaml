@@ -151,7 +151,7 @@ jobs:
       # Must initialize after generated identifier
       - name: Initialize Android target
         if: matrix.platform == 'android'
-        run: npm run tauri android init
+        run: npm run tauri android init --skip-targets-install
 
       # Android signing
       - name: Prepare Android Keystore
