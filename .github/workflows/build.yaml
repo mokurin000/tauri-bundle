@@ -71,6 +71,15 @@ jobs:
           build-std = ["std", "panic_abort"]
           EOF
 
+          cat >> src-tauri/Cargo.toml << EOF
+          
+          [profile.release]
+          lto = true
+          strip = true
+          panic = "immediate-abort"
+          opt-level = "z"
+          EOF
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
