@@ -27,12 +27,6 @@ on:
         default: '1'
         type: string
 
-# Required Secrets for Android signing:
-# - ANDROID_KEY_BASE64
-# - ANDROID_KEYSTORE_PASSWORD
-# - ANDROID_KEY_ALIAS
-# - ANDROID_KEY_PASSWORD
-
 jobs:
   build:
     name: Build ${{ matrix.platform }}
@@ -57,22 +51,38 @@ jobs:
           npm create tauri-app@latest . -- --template vanilla --yes \
             --app-name "${{ inputs.app_name }}" \
             --window-title "${{ inputs.app_name }}"
-          echo "✅ Fresh Tauri project created with app name: ${{ inputs.app_name }}"
 
       - name: Install dependencies
         run: npm install
+
+      - name: Setup Nightly Rust with panic-immediate-abort
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          rustup toolchain install nightly-2026-04-06 --component rust-src
+          rustup default nightly-2026-04-06
+          rustup target add aarch64-linux-android
+
+          sed -i '1i cargo-features = ["panic-immediate-abort"]' src-tauri/Cargo.toml
+
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [unstable]
+          build-std = ["std", "panic_abort"]
+          EOF
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri'
+          key: ${{ matrix.platform }}-nightly-2026-04-06
 
       - name: Setup Rust
+        if: matrix.platform == 'windows'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'windows' && 'x86_64-pc-windows-msvc' || 'aarch64-linux-android' }}
+          targets: x86_64-pc-windows-msvc
 
-      # Android-only setup
       - name: Setup JDK 17 + Android SDK + NDK
         if: matrix.platform == 'android'
         uses: actions/setup-java@v4
@@ -91,7 +101,6 @@ jobs:
           ndk-version: r27d
           link-to-sdk: true
 
-      # Configure Tauri for remote URL
       - name: Configure Tauri for remote URL
         env:
           TARGET_URL: ${{ inputs.url }}
@@ -115,10 +124,7 @@ jobs:
             let domain = "";
             try {
               domain = new URL(targetUrl).hostname;
-              console.log(`Extracted domain: ${domain}`);
-            } catch (e) {
-              console.warn("Warning: Could not extract domain from URL");
-            }
+            } catch (e) {}
 
             const configPath = path.join("src-tauri", "tauri.conf.json");
             let config = JSON.parse(fs.readFileSync(configPath, "utf8"));
@@ -140,20 +146,12 @@ jobs:
             config.bundle.android.versionCode = androidBuild;
 
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
-
-            console.log("✅ Tauri config updated for remote URL mode");
-            console.log("   App Name     =", appName);
-            console.log("   frontendDist =", targetUrl);
-            console.log("   identifier   =", config.identifier);
-            console.log("   version      =", version);
           '
 
-      # Must initialize after generated identifier
       - name: Initialize Android target
         if: matrix.platform == 'android'
         run: npm run tauri android init --skip-targets-install
 
-      # Android signing
       - name: Prepare Android Keystore
         if: matrix.platform == 'android'
         env:
@@ -171,10 +169,49 @@ jobs:
           keyAlias=${ANDROID_KEY_ALIAS}
           keyPassword=${ANDROID_KEY_PASSWORD}
           EOF
-          echo "✅ Android keystore prepared"
 
-      # Build steps
-      - name: Build Windows x86_64 (includes NSIS installer)
+      - name: Configure Gradle signing for release
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          GRADLE_FILE="src-tauri/gen/android/app/build.gradle.kts"
+          cat > /tmp/signing_config.patch << 'EOF'
+          import java.util.Properties
+
+          val keystorePropertiesFile = rootProject.file("keystore.properties")
+          val keystoreProperties = Properties()
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+          }
+
+          android {
+              signingConfigs {
+                  create("release") {
+                      storeFile = file(keystoreProperties.getProperty("storeFile"))
+                      storePassword = keystoreProperties.getProperty("storePassword")
+                      keyAlias = keystoreProperties.getProperty("keyAlias")
+                      keyPassword = keystoreProperties.getProperty("keyPassword")
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.getByName("release")
+                  }
+              }
+          }
+          EOF
+
+          awk '
+            /android\s*\{/ { 
+              print; 
+              system("cat /tmp/signing_config.patch"); 
+              next 
+            } 
+            { print }
+          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp" && mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
+
+      - name: Build Windows x86_64
         if: matrix.platform == 'windows'
         run: npm run tauri build -- --target x86_64-pc-windows-msvc -b nsis
 
@@ -182,7 +219,6 @@ jobs:
         if: matrix.platform == 'android'
         run: npm run tauri android build -- --target aarch64 --apk --ci
 
-      # Upload artifacts
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
