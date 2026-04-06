@@ -1,4 +1,4 @@
-name: Tauri Build - Windows x86_64 + Android ARM64 (Remote URL)
+name: Tauri Build for ${{ inputs.url }}
 
 on:
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
           echo "✅ Fresh Tauri project created with app name: ${{ inputs.app_name }}"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -95,7 +95,7 @@ jobs:
         if: matrix.platform == 'android'
         run: npm run tauri android init
 
-      # Configure Tauri (remote URL, package name, version, etc.)
+      # Configure Tauri for remote URL
       - name: Configure Tauri for remote URL
         env:
           TARGET_URL: ${{ inputs.url }}
@@ -127,11 +127,9 @@ jobs:
             const configPath = path.join("src-tauri", "tauri.conf.json");
             let config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-            // Remote URL mode
             if (!config.build) config.build = {};
             config.build.frontendDist = targetUrl;
 
-            // Package identifier
             let identifier = manualPackage;
             if (!identifier && domain) {
               identifier = domain.split(".").reverse().join(".");
@@ -152,7 +150,6 @@ jobs:
             console.log("   frontendDist =", targetUrl);
             console.log("   identifier   =", config.identifier);
             console.log("   version      =", version);
-            console.log("   versionCode  =", androidBuild);
           '
 
       # Android signing
