@@ -150,7 +150,7 @@ jobs:
 
       - name: Initialize Android target
         if: matrix.platform == 'android'
-        run: npm run tauri android init --skip-targets-install
+        run: npm run tauri android init -- --skip-targets-install
 
       - name: Prepare Android Keystore
         if: matrix.platform == 'android'
