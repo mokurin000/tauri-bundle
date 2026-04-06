@@ -1,4 +1,4 @@
-name: Tauri Build for ${{ inputs.url }}
+name: Tauri Build
 
 on:
   workflow_dispatch:
