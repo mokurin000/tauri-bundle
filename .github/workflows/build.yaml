@@ -17,9 +17,9 @@ on:
         required: false
         type: string
       version:
-        description: 'App version (default: 1.0)'
+        description: 'App version (default: 1.0.0)'
         required: false
-        default: '1.0'
+        default: '1.0.0'
         type: string
       android_build_number:
         description: 'Android versionCode (integer, default: 1)'
