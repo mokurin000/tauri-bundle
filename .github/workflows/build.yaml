@@ -149,7 +149,7 @@ jobs:
             if (identifier) config.identifier = identifier;
 
             config.version = version;
-            if (!config.productName) config.productName = appName;
+            config.productName = appName;
 
             if (!config.bundle) config.bundle = {};
             if (!config.bundle.android) config.bundle.android = {};
