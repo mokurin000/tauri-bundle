@@ -161,14 +161,16 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           mkdir -p src-tauri/gen/android/app
-          echo "$ANDROID_KEY_BASE64" | base64 -d > src-tauri/gen/android/app/upload-keystore.jks
+          jks_file=src-tauri/gen/android/app/upload-keystore.jks
+          keystore_prop=src-tauri/gen/android/app/keystore.properties
 
-          cat > src-tauri/gen/android/app/keystore.properties << EOF
-          storeFile=upload-keystore.jks
-          storePassword=${ANDROID_KEYSTORE_PASSWORD}
-          keyAlias=${ANDROID_KEY_ALIAS}
-          keyPassword=${ANDROID_KEY_PASSWORD}
-          EOF
+          echo "$ANDROID_KEY_BASE64" | base64 -d > "${jks_file}"
+
+          echo storeFile=upload-keystore.jks > "${keystore_prop}"
+          echo storePassword=${ANDROID_KEYSTORE_PASSWORD} >> "${keystore_prop}"
+          echo keyAlias=${ANDROID_KEY_ALIAS} >> "${keystore_prop}"
+          echo keyPassword=${ANDROID_KEY_PASSWORD} >> "${keystore_prop}"
+
 
       - name: Configure Gradle signing for release
         if: matrix.platform == 'android'
