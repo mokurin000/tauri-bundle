@@ -26,7 +26,7 @@ on:
         required: false
         default: '1'
         type: string
-
+run-name: Deploy for ${{ inputs.url }}
 jobs:
   build:
     name: Build ${{ matrix.platform }}
